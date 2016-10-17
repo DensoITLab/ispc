@@ -99,6 +99,11 @@ usage(int ret) {
     sprintf(cpuHelp, "[--cpu=<cpu>]\t\t\tSelect target CPU type\n<cpu>={%s}\n",
             Target::SupportedCPUs().c_str());
     PrintWithWordBreaks(cpuHelp, 16, TerminalWidth(), stdout);
+    char sysHelp[2048];
+    sprintf(sysHelp, "[--sys=<sys>]\t\t\tSelect target system type\n<sys>={%s}\n",
+            Target::SupportedTargetSystems());
+    PrintWithWordBreaks(sysHelp, 16, TerminalWidth(), stdout);
+
     printf("    [-D<foo>]\t\t\t\t#define given value when running preprocessor\n");
     printf("    [--dev-stub <filename>]\t\tEmit device-side offload stub functions to file\n");
 #ifdef ISPC_IS_WINDOWS
@@ -328,6 +333,14 @@ int main(int Argc, char *Argv[]) {
     LLVMInitializeARMAsmParser();
     LLVMInitializeARMDisassembler();
     LLVMInitializeARMTargetMC();
+    
+    // Generating AArch64 from x86
+    LLVMInitializeAArch64TargetInfo();
+    LLVMInitializeAArch64Target();
+    LLVMInitializeAArch64AsmPrinter();
+    LLVMInitializeAArch64AsmParser();
+    LLVMInitializeAArch64Disassembler();
+    LLVMInitializeAArch64TargetMC();
 #endif
 
 #ifdef ISPC_NVPTX_ENABLED
@@ -350,7 +363,7 @@ int main(int Argc, char *Argv[]) {
 
     Module::OutputType ot = Module::Object;
     bool generatePIC = false;
-    const char *arch = NULL, *cpu = NULL, *target = NULL;
+    const char *arch = NULL, *cpu = NULL, *target = NULL, *sys = NULL;
 
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i], "--help"))
@@ -375,6 +388,8 @@ int main(int Argc, char *Argv[]) {
             arch = argv[i] + 7;
         else if (!strncmp(argv[i], "--cpu=", 6))
             cpu = argv[i] + 6;
+        else if (!strncmp(argv[i], "--sys=", 6))
+            sys = argv[i] + 6;
         else if (!strcmp(argv[i], "--fast-math")) {
             fprintf(stderr, "--fast-math option has been renamed to --opt=fast-math!\n");
             usage(1);
@@ -642,7 +657,7 @@ int main(int Argc, char *Argv[]) {
               "Program will be compiled and warnings/errors will "
               "be issued, but no output will be generated.");
 
-    return Module::CompileAndOutput(file, arch, cpu, target, generatePIC,
+    return Module::CompileAndOutput(file, arch, cpu, target, sys, generatePIC,
                                     ot,
                                     outFileName,
                                     headerFileName,

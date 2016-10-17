@@ -1165,7 +1165,7 @@ DefineStdlib(SymbolTable *symbolTable, llvm::LLVMContext *ctx, llvm::Module *mod
     // builtin functions (e.g. __masked_store_32(), etc).
     switch (g->target->getISA()) {
 #ifdef ISPC_NVPTX_ENABLED
-    case Target::NVPTX: 
+    case Target::NVPTX:
       {
         if (runtime32) {
             fprintf(stderr, "Unfortunatly 32bit targets are not supported at the moment .. \n");
@@ -1184,7 +1184,7 @@ DefineStdlib(SymbolTable *symbolTable, llvm::LLVMContext *ctx, llvm::Module *mod
             EXPORT_MODULE(builtins_bitcode_neon_8_32bit);
         }
         else {
-            EXPORT_MODULE(builtins_bitcode_neon_8_64bit);
+            EXPORT_MODULE(builtins_bitcode_neon64_8_64bit);
         }
         break;
     }
@@ -1193,7 +1193,7 @@ DefineStdlib(SymbolTable *symbolTable, llvm::LLVMContext *ctx, llvm::Module *mod
             EXPORT_MODULE(builtins_bitcode_neon_16_32bit);
         }
         else {
-            EXPORT_MODULE(builtins_bitcode_neon_16_64bit);
+            EXPORT_MODULE(builtins_bitcode_neon64_16_64bit);
         }
         break;
     }
@@ -1202,7 +1202,7 @@ DefineStdlib(SymbolTable *symbolTable, llvm::LLVMContext *ctx, llvm::Module *mod
             EXPORT_MODULE(builtins_bitcode_neon_32_32bit);
         }
         else {
-            EXPORT_MODULE(builtins_bitcode_neon_32_64bit);
+            EXPORT_MODULE(builtins_bitcode_neon64_32_64bit);
         }
         break;
     }

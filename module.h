@@ -116,6 +116,8 @@ public:
         @param targets      %Target ISAs; this parameter may give a single target
                             ISA, or may give a comma-separated list of them in
                             case we are compiling to multiple ISAs.
+        @param sys          %Target Systems; this parameter may give a target system type.
+                            (e.g. "ios", "android")
         @param generatePIC  Indicates whether position-independent code should
                             be generated.
         @param outputType   %Type of output to generate (object files, assembly,
@@ -137,7 +139,7 @@ public:
                             srcFile.
      */
     static int CompileAndOutput(const char *srcFile, const char *arch,
-                                const char *cpu, const char *targets,
+                                const char *cpu, const char *targets, const char *sys,
                                 bool generatePIC,
                                 OutputType outputType,
                                 const char *outFileName,

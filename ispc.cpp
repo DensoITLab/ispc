@@ -266,6 +266,9 @@ typedef enum {
     // cortex-a9 and a15.  We should be able to handle any of them that also
     // have NEON support.
 #ifdef ISPC_ARM_ENABLED
+    // ARM Cortex A53. Supports AArch64 NEON.
+    CPU_CortexA53,
+
     // ARM Cortex A15. Supports NEON VFPv4.
     CPU_CortexA15,
 
@@ -346,6 +349,8 @@ public:
 #endif
 
 #ifdef ISPC_ARM_ENABLED
+        names[CPU_CortexA53].push_back("cortex-a53");
+
         names[CPU_CortexA15].push_back("cortex-a15");
 
         names[CPU_CortexA9].push_back("cortex-a9");
@@ -410,6 +415,8 @@ public:
         compat[CPU_Generic]     = Set(CPU_Generic, CPU_None);
 
 #ifdef ISPC_ARM_ENABLED
+        compat[CPU_CortexA53]   = Set(CPU_Generic, CPU_CortexA53, CPU_None);
+
         compat[CPU_CortexA15]   = Set(CPU_Generic, CPU_CortexA9, CPU_CortexA15,
                                       CPU_None);
         compat[CPU_CortexA9]    = Set(CPU_Generic, CPU_CortexA9, CPU_None);
@@ -460,7 +467,7 @@ public:
 };
 
 
-Target::Target(const char *arch, const char *cpu, const char *isa, bool pic, bool printTarget, std::string genericAsSmth) :
+Target::Target(const char *arch, const char *cpu, const char *isa, const char *sys, bool pic, bool printTarget, std::string genericAsSmth) :
     m_target(NULL),
     m_targetMachine(NULL),
     m_dataLayout(NULL),
@@ -470,6 +477,7 @@ Target::Target(const char *arch, const char *cpu, const char *isa, bool pic, boo
     m_arch(""),
     m_is32Bit(true),
     m_cpu(""),
+    m_sys(""),
     m_attributes(""),
 #if ISPC_LLVM_VERSION >= ISPC_LLVM_3_3 
     m_tf_attributes(NULL),
@@ -528,6 +536,7 @@ Target::Target(const char *arch, const char *cpu, const char *isa, bool pic, boo
 #ifdef ISPC_ARM_ENABLED
             case CPU_CortexA9:
             case CPU_CortexA15:
+            case CPU_CortexA53:
                 isa = "neon-i32x4";
                 break;
 #endif
@@ -973,7 +982,11 @@ Target::Target(const char *arch, const char *cpu, const char *isa, bool pic, boo
         this->m_nativeVectorAlignment = 16;
         this->m_dataTypeWidth = 8;
         this->m_vectorWidth = 16;
-        this->m_attributes = "+neon,+fp16";
+        if (std::string(arch) == "aarch64") {
+            this->m_attributes = "+neon,+fullfp16";
+        } else {
+            this->m_attributes = "+neon,+fp16";
+        }
         this->m_hasHalf = true; // ??
         this->m_maskingIsFree = false;
         this->m_maskBitCount = 8;
@@ -984,7 +997,11 @@ Target::Target(const char *arch, const char *cpu, const char *isa, bool pic, boo
         this->m_nativeVectorAlignment = 16;
         this->m_dataTypeWidth = 16;
         this->m_vectorWidth = 8;
-        this->m_attributes = "+neon,+fp16";
+        if (std::string(arch) == "aarch64") {
+            this->m_attributes = "+neon,+fullfp16";
+        } else {
+            this->m_attributes = "+neon,+fp16";
+        }
         this->m_hasHalf = true; // ??
         this->m_maskingIsFree = false;
         this->m_maskBitCount = 16;
@@ -996,7 +1013,11 @@ Target::Target(const char *arch, const char *cpu, const char *isa, bool pic, boo
         this->m_nativeVectorAlignment = 16;
         this->m_dataTypeWidth = 32;
         this->m_vectorWidth = 4;
-        this->m_attributes = "+neon,+fp16";
+        if (std::string(arch) == "aarch64") {
+            this->m_attributes = "+neon,+fullfp16";
+        } else {
+            this->m_attributes = "+neon,+fp16";
+        }
         this->m_hasHalf = true; // ??
         this->m_maskingIsFree = false;
         this->m_maskBitCount = 32;
@@ -1025,8 +1046,13 @@ Target::Target(const char *arch, const char *cpu, const char *isa, bool pic, boo
     }
 
 #if defined(ISPC_ARM_ENABLED) && !defined(__arm__)
-    if ((CPUID == CPU_None) && !strncmp(isa, "neon", 4))
-        CPUID = CPU_CortexA9;
+    if ((CPUID == CPU_None) && !strncmp(isa, "neon", 4)) {
+        if (std::string(arch) == "aarch64") {
+            CPUID = CPU_CortexA53;
+        } else {
+            CPUID = CPU_CortexA9;
+        }
+    }
 #endif
 
     if (CPUID == CPU_None) {
@@ -1059,6 +1085,11 @@ Target::Target(const char *arch, const char *cpu, const char *isa, bool pic, boo
     }
     this->m_cpu = cpu;
 
+    if (sys != NULL) {
+        // set target system
+        this->m_sys = std::string(sys);
+    }
+        
     if (!error) {
         // Create TargetMachine
         std::string triple = GetTripleString();
@@ -1146,7 +1177,16 @@ Target::Target(const char *arch, const char *cpu, const char *isa, bool pic, boo
         // and can assume 32 bit runtime.
         // FIXME: all generic targets are handled as 64 bit, which is incorrect.
 
+#if ISPC_ARM_ENABLED
+        // To handle cross comple target 'aarch64' on different host arch.
+        if (std::string(arch) == "aarch64") {
+            this->m_is32Bit = false;
+        } else {
+            this->m_is32Bit = (getDataLayout()->getPointerSize() == 4);
+        }
+#else
         this->m_is32Bit = (getDataLayout()->getPointerSize() == 4);
+#endif
 
 #if ISPC_LLVM_VERSION >= ISPC_LLVM_3_3
         // This is LLVM 3.3+ feature.
@@ -1192,7 +1232,7 @@ const char *
 Target::SupportedArchs() {
     return
 #ifdef ISPC_ARM_ENABLED
-        "arm, "
+        "arm, aarch64, "
 #endif
         "x86, x86-64";
 }
@@ -1225,13 +1265,41 @@ Target::SupportedTargets() {
 
 }
 
+const char *
+Target::SupportedTargetSystems() {
+    return
+        "host"
+#ifdef ISPC_ARM_ENABLED
+        ", ios, android"
+#endif
+;
+
+}
+
 
 std::string
 Target::GetTripleString() const {
     llvm::Triple triple;
 #ifdef ISPC_ARM_ENABLED
     if (m_arch == "arm") {
-        triple.setTriple("armv7-eabi");
+        if (m_sys == "ios") {
+            triple = llvm::Triple("armv7", "apple", m_sys.c_str());
+        } else if (m_sys == "android") {
+            triple = llvm::Triple("armv7", "unknown", m_sys.c_str());
+        } else {
+            triple.setTriple(llvm::sys::getDefaultTargetTriple());
+            triple.setArchName("armv7");
+        }
+    }
+    else if (m_arch == "aarch64") {
+        if (m_sys == "ios") {
+            triple = llvm::Triple("aarch64", "apple", m_sys.c_str());
+        } else if (m_sys == "android") {
+            triple = llvm::Triple("aarch64", "unknown", m_sys.c_str());
+        } else {
+            triple.setTriple(llvm::sys::getDefaultTargetTriple());
+            triple.setArchName("aarch64");
+        }
     }
     else
 #endif

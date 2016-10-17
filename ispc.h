@@ -207,11 +207,15 @@ public:
     /** Initializes the given Target pointer for a target of the given
         name, if the name is a known target.  Returns true if the
         target was initialized and false if the name is unknown. */
-    Target(const char *arch, const char *cpu, const char *isa, bool pic, bool printTarget, std::string genenricAsSmth = "");
+    Target(const char *arch, const char *cpu, const char *isa, const char *sys, bool pic, bool printTarget, std::string genenricAsSmth = "");
 
     /** Returns a comma-delimited string giving the names of the currently
         supported compilation targets. */
     static const char *SupportedTargets();
+
+    /** Returns a comma-delimited string giving the names of the currently
+     supported target systems. */
+    static const char *SupportedTargetSystems();
 
     /** Returns a comma-delimited string giving the names of the currently
         supported CPUs. */
@@ -340,6 +344,9 @@ private:
 
     /** Target CPU. (e.g. "corei7", "corei7-avx", ..) */
     std::string m_cpu;
+
+    /** Target Systems. (e.g. "host", "ios", "android") */
+    std::string m_sys;
 
     /** Target-specific attribute string to pass along to the LLVM backend */
     std::string m_attributes;

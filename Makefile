@@ -94,7 +94,7 @@ LLVM_CXXFLAGS=$(shell $(LLVM_CONFIG) --cppflags) $(DNDEBUG_FLAG)
 LLVM_VERSION=LLVM_$(shell $(LLVM_CONFIG) --version | sed -e 's/svn//' -e 's/\./_/' -e 's/\..*//')
 LLVM_VERSION_DEF=-D$(LLVM_VERSION)
 
-LLVM_COMPONENTS = engine ipo bitreader bitwriter instrumentation linker 
+LLVM_COMPONENTS = engine ipo bitreader bitwriter instrumentation linker
 # Component "option" was introduced in 3.3 and starting with 3.4 it is required for the link step.
 # We check if it's available before adding it (to not break 3.2 and earlier).
 ifeq ($(shell $(LLVM_CONFIG) --components |grep -c option), 1)
@@ -102,10 +102,11 @@ ifeq ($(shell $(LLVM_CONFIG) --components |grep -c option), 1)
 endif
 ifneq ($(ARM_ENABLED), 0)
     LLVM_COMPONENTS+=arm
+    LLVM_COMPONENTS+=aarch64
 endif
 ifneq ($(NVPTX_ENABLED), 0)
     LLVM_COMPONENTS+=nvptx
-endif	
+endif
 LLVM_LIBS=$(shell $(LLVM_CONFIG) --libs $(LLVM_COMPONENTS))
 
 CLANG=clang
@@ -121,7 +122,7 @@ ifeq ($(LLVM_VERSION),LLVM_3_4)
     ISPC_LIBS += -lcurses
 endif
 
-# There is no logical OR in GNU make. 
+# There is no logical OR in GNU make.
 # This 'ifneq' acts like if( !($(LLVM_VERSION) == LLVM_3_2 || $(LLVM_VERSION) == LLVM_3_3 || $(LLVM_VERSION) == LLVM_3_4))
 ifeq (,$(filter $(LLVM_VERSION), LLVM_3_2 LLVM_3_3 LLVM_3_4))
     ISPC_LIBS += -lcurses -lz
@@ -203,18 +204,24 @@ HEADERS=ast.h builtins.h ctx.h decl.h expr.h func.h ispc.h llvmutil.h module.h \
 TARGETS=avx2-i64x4 avx11-i64x4 avx1-i64x4 avx1 avx1-x2 avx11 avx11-x2 avx2 avx2-x2 \
 	sse2 sse2-x2 sse4-8 sse4-16 sse4 sse4-x2 \
 	generic-4 generic-8 generic-16 generic-32 generic-64 generic-1 knl skx
-ifneq ($(ARM_ENABLED), 0)
-    TARGETS+=neon-32 neon-16 neon-8
-endif
 ifneq ($(NVPTX_ENABLED), 0)
     TARGETS+=nvptx
 endif
+TARGETS32=$(TARGETS)
+TARGETS64=$(TARGETS)
+ifneq ($(ARM_ENABLED), 0)
+    TARGETS32+=neon-32 neon-16 neon-8
+    TARGETS64+=neon64-32 neon64-16 neon64-8
+endif
 # These files need to be compiled in two versions - 32 and 64 bits.
-BUILTINS_SRC_TARGET=$(addprefix builtins/target-, $(addsuffix .ll, $(TARGETS)))
+# BUILTINS_SRC_TARGET=$(addprefix builtins/target-, $(addsuffix .ll, $(TARGETS)))
+BUILTINS_SRC_TARGET32=$(addprefix builtins/target-, $(addsuffix .ll, $(TARGETS32)))
+BUILTINS_SRC_TARGET64=$(addprefix builtins/target-, $(addsuffix .ll, $(TARGETS64)))
+
 # These are files to be compiled in single version.
 BUILTINS_SRC_COMMON=builtins/dispatch.ll
-BUILTINS_OBJS_32=$(addprefix builtins-, $(notdir $(BUILTINS_SRC_TARGET:.ll=-32bit.o)))
-BUILTINS_OBJS_64=$(addprefix builtins-, $(notdir $(BUILTINS_SRC_TARGET:.ll=-64bit.o)))
+BUILTINS_OBJS_32=$(addprefix builtins-, $(notdir $(BUILTINS_SRC_TARGET32:.ll=-32bit.o)))
+BUILTINS_OBJS_64=$(addprefix builtins-, $(notdir $(BUILTINS_SRC_TARGET64:.ll=-64bit.o)))
 BUILTINS_OBJS=$(addprefix builtins-, $(notdir $(BUILTINS_SRC_COMMON:.ll=.o))) \
 	$(BUILTINS_OBJS_32) $(BUILTINS_OBJS_64) \
 	builtins-c-32.cpp builtins-c-64.cpp
@@ -306,7 +313,7 @@ objs/parse.o: objs/parse.cc $(HEADERS)
 	@echo Compiling $<
 	@$(CXX) $(CXXFLAGS) -o $@ -c $<
 
-objs/lex.cpp: lex.ll 
+objs/lex.cpp: lex.ll
 	@echo Running flex on $<
 	@$(LEX) -o $@ $<
 

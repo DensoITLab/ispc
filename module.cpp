@@ -3062,6 +3062,7 @@ Module::CompileAndOutput(const char *srcFile,
                          const char *arch,
                          const char *cpu,
                          const char *target,
+                         const char *sys,
                          bool generatePIC,
                          OutputType outputType,
                          const char *outFileName,
@@ -3073,7 +3074,7 @@ Module::CompileAndOutput(const char *srcFile,
 {
     if (target == NULL || strchr(target, ',') == NULL) {
         // We're only compiling to a single target
-        g->target = new Target(arch, cpu, target, generatePIC, g->printTarget);
+        g->target = new Target(arch, cpu, target, sys, generatePIC, g->printTarget);
         if (!g->target->isValid())
             return 1;
 
@@ -3217,7 +3218,7 @@ Module::CompileAndOutput(const char *srcFile,
         std::string treatGenericAsSmth = "";
 
         for (unsigned int i = 0; i < targets.size(); ++i) {
-            g->target = new Target(arch, cpu, targets[i].c_str(), generatePIC, g->printTarget);
+            g->target = new Target(arch, cpu, targets[i].c_str(), sys, generatePIC, g->printTarget);
             if (!g->target->isValid())
                 return 1;
 
@@ -3320,7 +3321,7 @@ Module::CompileAndOutput(const char *srcFile,
         }
         Assert(firstTargetMachine != NULL);
 
-        g->target = new Target(arch, cpu, firstISA, generatePIC, false, treatGenericAsSmth);
+        g->target = new Target(arch, cpu, firstISA, sys, generatePIC, false, treatGenericAsSmth);
         if (!g->target->isValid()) {
             return 1;
         }
